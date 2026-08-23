@@ -8,6 +8,7 @@ import React, {
   ReactNode,
   ReactElement,
 } from "react";
+import { useSession } from "next-auth/react"; // ⬅️ NEW: Import NextAuth!
 import type {
   AppState,
   CompleteHabitResponse,
@@ -100,7 +101,7 @@ const api = {
 type Action =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ERROR"; payload: string | null }
-  | { type: "SET_USER"; payload: User }
+  | { type: "SET_USER"; payload: User | null } // Updated to allow null on logout
   | { type: "UPDATE_USER"; payload: Partial<User> }
   | { type: "SET_HABITS"; payload: Habit[] }
   | { type: "UPDATE_HABIT"; payload: Habit }
@@ -153,7 +154,6 @@ function reducer(state: AppState, action: Action): AppState {
         ...state,
         habits: state.habits.map((h) => {
           if (h._id !== action.payload.habitId) return h;
-          // Create a fake, instant update of the specific milestone
           return {
             ...h,
             milestones: h.milestones.map((m) =>
@@ -171,7 +171,7 @@ function reducer(state: AppState, action: Action): AppState {
 
 // ── Context shape ─────────────────────────────────────────────────
 interface AppContextValue extends AppState {
-  userId: string;
+  userId: string | null; // ⬅️ Changed to allow null when logged out
   fetchHabits: () => Promise<void>;
   completeHabit: (habitId: string) => Promise<CompleteHabitResponse>;
   createHabit: (form: CreateHabitForm) => Promise<Habit>;
@@ -189,12 +189,10 @@ const AppContext = createContext<AppContextValue | null>(null);
 // ── Provider ──────────────────────────────────────────────────────
 interface AppProviderProps {
   children: ReactNode;
-  userId: string;
+  // ⬅️ Removed userId prop! NextAuth handles this now.
 }
 
-// Helper to grab saved state if it exists, otherwise use the blank state
 const loadInitialState = (): AppState => {
-  // Check if we are in the browser (fixes Next.js server-side rendering errors)
   if (typeof window !== "undefined") {
     const savedState = localStorage.getItem("habitTrackerState");
     if (savedState) {
@@ -208,7 +206,11 @@ const loadInitialState = (): AppState => {
   return initialState;
 };
 
-export function AppProvider({ children, userId }: AppProviderProps): ReactElement {
+export function AppProvider({ children }: AppProviderProps): ReactElement {
+  // ⬇️ THE MAGIC: Securely fetch the session from NextAuth!
+  const { data: session, status } = useSession();
+  const userId = session?.user ? (session.user as any).id : null;
+
   const [state, dispatch] = useReducer(reducer, loadInitialState());
 
   useEffect(() => {
@@ -217,22 +219,30 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
     }
   }, [state]);
 
-  // Load user once on mount
+  // ── THE BRIDGE: Load full user data when NextAuth says they are logged in ──
   useEffect(() => {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    api
-      .updateTimezone(userId, timezone)
-      .then(({ user }) => dispatch({ type: "SET_USER", payload: user }))
-      .catch(() => {
-        api
-          .getUser(userId)
-          .then(({ user }) => dispatch({ type: "SET_USER", payload: user }))
-          .catch(() => { });
-      });
-  }, [userId]);
+    if (status === "authenticated" && userId) {
+      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      api
+        .updateTimezone(userId, timezone)
+        .then(({ user }) => dispatch({ type: "SET_USER", payload: user }))
+        .catch(() => {
+          api
+            .getUser(userId)
+            .then(({ user }) => dispatch({ type: "SET_USER", payload: user }))
+            .catch(() => { });
+        });
+    } else if (status === "unauthenticated") {
+      // Clear data if they log out
+      dispatch({ type: "SET_USER", payload: null });
+      dispatch({ type: "SET_HABITS", payload: [] });
+    }
+  }, [userId, status]);
 
   // ── fetchHabits ───────────────────────────────────────────────
   const fetchHabits = useCallback(async (): Promise<void> => {
+    if (!userId) return; // ⬅️ Safety guard
+
     dispatch({ type: "SET_LOADING", payload: true });
     try {
       const { habits } = await api.getHabits(userId);
@@ -250,6 +260,8 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
   // ── completeHabit ─────────────────────────────────────────────
   const completeHabit = useCallback(
     async (habitId: string): Promise<CompleteHabitResponse> => {
+      if (!userId) throw new Error("User not authenticated"); // ⬅️ Safety guard
+
       const timeZone = state.user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
       const data = await api.completeHabit(habitId, userId, timeZone).catch((err) => {
         throw new Error(err instanceof Error ? err.message : "Could not complete habit");
@@ -257,21 +269,16 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
       
       dispatch({ type: "UPDATE_HABIT", payload: data.habit });
       dispatch({ type: "UPDATE_USER", payload: data.user });
-      
       dispatch({
         type: "SET_LAST_REWARD",
         payload: { ...data.rewards, ...data.levelResult, ...data.streakResult },
       });
 
-      // ── NEW: Trigger the Achievement Popup! ──
-      // @ts-ignore - we'll fix the type definition next if you haven't already
       if (data.newlyUnlocked && data.newlyUnlocked.length > 0) {
         window.dispatchEvent(
-          // @ts-ignore
           new CustomEvent("achievement-unlocked", { detail: data.newlyUnlocked })
         );
       }
-
       return data;
     },
     [userId, state.user?.timezone],
@@ -279,14 +286,13 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
 
   const undoHabit = useCallback(
     async (habitId: string) => {
+      if (!userId) throw new Error("User not authenticated");
+
       const originalHabit = state.habits.find(h => h._id === habitId);
       try {
         const data = await api.undoHabit(habitId, userId);
-        
         dispatch({ type: "UPDATE_HABIT", payload: data.habit });
-        
         dispatch({ type: "UPDATE_USER", payload: data.user });
-        
       } catch (err) {
         if (originalHabit) {
            dispatch({ type: "UPDATE_HABIT", payload: originalHabit });
@@ -300,6 +306,8 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
   // ── createHabit ───────────────────────────────────────────────
   const createHabit = useCallback(
     async (form: CreateHabitForm): Promise<Habit> => {
+      if (!userId) throw new Error("User not authenticated");
+
       const { habit } = await api.createHabit(form, userId).catch((err) => {
         throw new Error(err instanceof Error ? err.message : "Failed to create habit");
       });
@@ -312,45 +320,36 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
   // ── toggleMilestone ───────────────────────────────────────────
   const toggleMilestone = useCallback(
     async (habitId: string, milestoneId: string): Promise<ToggleMilestoneResponse> => {
-      // 1. Snapshot the current habit in case we need to roll back
-      const originalHabit = state.habits.find(h => h._id === habitId);
+      if (!userId) throw new Error("User not authenticated");
 
-      // 2. INSTANT UI UPDATE: Dispatch the fake toggle immediately
+      const originalHabit = state.habits.find(h => h._id === habitId);
       dispatch({
         type: "OPTIMISTIC_TOGGLE",
         payload: { habitId, milestoneId }
       });
 
-      // 3. BACKGROUND SYNC: Talk to the Express server
       try {
         const data = await api.toggleMilestone(habitId, milestoneId, userId);
-
-        // Overwrite the optimistic habit with the real, validated one from the server
         dispatch({ type: "UPDATE_HABIT", payload: data.habit });
 
-        // Trigger gamification if this toggle completed the whole habit
        if (data.completion) {
-          
-          dispatch({ type: "UPDATE_USER", payload: data.completion.user });
-          
-          dispatch({
-            type: "SET_LAST_REWARD",
-            payload: {
-              ...data.completion.rewards,
-              ...data.completion.levelResult,
-              ...data.completion.streakResult,
-            },
-          });
-          if (data.completion.newlyUnlocked && data.completion.newlyUnlocked.length > 0) {
-            window.dispatchEvent(
-              // @ts-ignore
-              new CustomEvent("achievement-unlocked", { detail: data.completion.newlyUnlocked })
-            );
-          }
-        }
+         dispatch({ type: "UPDATE_USER", payload: data.completion.user });
+         dispatch({
+           type: "SET_LAST_REWARD",
+           payload: {
+             ...data.completion.rewards,
+             ...data.completion.levelResult,
+             ...data.completion.streakResult,
+           },
+         });
+         if (data.completion.newlyUnlocked && data.completion.newlyUnlocked.length > 0) {
+           window.dispatchEvent(
+             new CustomEvent("achievement-unlocked", { detail: data.completion.newlyUnlocked })
+           );
+         }
+       }
         return data;
       } catch (err) {
-        // 4. ROLLBACK: If the server failed (e.g. offline), revert to the backup
         if (originalHabit) {
           dispatch({ type: "UPDATE_HABIT", payload: originalHabit });
         }
@@ -365,6 +364,8 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
   // ── deleteHabit ───────────────────────────────────────────────
   const deleteHabit = useCallback(
     async (habitId: string): Promise<void> => {
+      if (!userId) throw new Error("User not authenticated");
+
       await api.deleteHabit(habitId, userId).catch((err) => {
         throw new Error(err instanceof Error ? err.message : "Failed to delete habit");
       });
@@ -385,11 +386,10 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
 
   const toggleEquip = useCallback(
     async (itemId: string, category: string) => {
+      if (!userId) throw new Error("User not authenticated");
+
       try {
-        // 1. Talk to Express
         const data = await api.equipReward(userId, itemId, category);
-        
-        // 2. Instantly update the UI using the reducer we built earlier!
         dispatch({ type: "UPDATE_USER", payload: data.user });
       } catch (err) {
         console.error("Failed to equip item:", err);
@@ -416,7 +416,14 @@ export function AppProvider({ children, userId }: AppProviderProps): ReactElemen
         dispatch
       }}
     >
-      {children}
+      {/* Show a cool spinner while NextAuth is doing its initial cookie check */}
+      {status === "loading" ? (
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-violet-500/30 border-t-violet-500 rounded-full animate-spin" />
+        </div>
+      ) : (
+        children
+      )}
     </AppContext.Provider>
   );
 }

@@ -10,26 +10,26 @@ import AddHabitModal from "../../../components/AddHabitModal";
 import type { CompletionLogEntry, LastReward } from "@/types/types";
 import { getDateIsoInTimeZone } from "../../../utils/date";
 
-const LevelUpToast = memo(function LevelUpToast({
-  reward, onDismiss,
-}: { reward: LastReward; onDismiss: () => void }) {
-  if (!reward.leveledUp) return null;
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.75, y: 40 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.75, y: 40 }}
-      transition={{ type: "spring", stiffness: 300, damping: 24 }}
-      style={{ willChange: "transform, opacity" }}
-      className="fixed bottom-24 lg:bottom-8 left-1/2 -translate-x-1/2 z-50 bg-linear-to-r from-violet-600 to-indigo-500 text-white px-6 py-4 rounded-2xl shadow-2xl text-center min-w-55 cursor-pointer"
-      onClick={onDismiss}
-    >
-      <div className="text-3xl mb-1">🎉</div>
-      <div className="font-bold text-lg">Level Up!</div>
-      <div className="text-sm opacity-90">You reached Level {reward.newLevel}</div>
-    </motion.div>
-  );
-});
+// const LevelUpToast = memo(function LevelUpToast({
+//   reward, onDismiss,
+// }: { reward: LastReward; onDismiss: () => void }) {
+//   if (!reward.leveledUp) return null;
+//   return (
+//     <motion.div
+//       initial={{ opacity: 0, scale: 0.75, y: 40 }}
+//       animate={{ opacity: 1, scale: 1, y: 0 }}
+//       exit={{ opacity: 0, scale: 0.75, y: 40 }}
+//       transition={{ type: "spring", stiffness: 300, damping: 24 }}
+//       style={{ willChange: "transform, opacity" }}
+//       className="fixed bottom-24 lg:bottom-8 left-1/2 -translate-x-1/2 z-50 bg-linear-to-r from-violet-600 to-indigo-500 text-white px-6 py-4 rounded-2xl shadow-2xl text-center min-w-55 cursor-pointer"
+//       onClick={onDismiss}
+//     >
+//       <div className="text-3xl mb-1">🎉</div>
+//       <div className="font-bold text-lg">Level Up!</div>
+//       <div className="text-sm opacity-90">You reached Level {reward.newLevel}</div>
+//     </motion.div>
+//   );
+// });
 
 const StatCard = memo(function StatCard({ icon, label, value, sub, color = "text-violet-400" }: {
   icon: string; label: string; value: string | number; sub?: string; color?: string;
@@ -76,9 +76,9 @@ export default function DashboardPage(): ReactElement {
 
   return (
     <>
-      <AnimatePresence>
+      {/* <AnimatePresence>
         {lastReward?.leveledUp && <LevelUpToast reward={lastReward} onDismiss={clearReward} />}
-      </AnimatePresence>
+      </AnimatePresence> */}
 
       <AddHabitModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
 

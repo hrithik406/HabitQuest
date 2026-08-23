@@ -32,7 +32,7 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: "badge_cycle", name: "Cycling Badge", description: "Hit the road.", cost: 50, levelRequired: 5, category: "cosmetic", icon: "🚴" },
   { id: "badge_heart", name: "Health Badge", description: "A healthy heart.", cost: 80, levelRequired: 6, category: "cosmetic", icon: "🫀" },
   { id: "badge_nature", name: "Nature Badge", description: "Get outside more.", cost: 80, levelRequired: 6, category: "cosmetic", icon: "🌿" },
-  { id: "badge_fireninja", name: "Fire Ninja", description: "Hot.", cost: 200,levelRequired: 6, category: "cosmetic", icon: "🥷🔥"}
+  { id: "badge_ninja", name: "Ninja", description: "Hot.", cost: 200,levelRequired: 6, category: "cosmetic", icon: "🥷"}
 ];
 
 // ── HELPER 1: For TopHeader & Profile Picture ──

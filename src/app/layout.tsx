@@ -5,6 +5,8 @@ import Providers from "./providers";
 import DashboardLayout from "../components/DashboardLayout";
 import ThemeInjector from "@/components/ThemeInjector";
 import "./globals.css";
+import AuthProvider from "@/components/AuthProvider";
+import { AppProvider } from "@/context/AppContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,10 +35,14 @@ export default function RootLayout({
         className="min-h-full bg-slate-950 text-white flex flex-col"
         suppressHydrationWarning // AND add it here just to be safe!
       >
-        <Providers>
-          <ThemeInjector />
-            {children}
-        </Providers>
+        <AuthProvider>
+          <AppProvider>
+            <Providers>
+              <ThemeInjector />
+              {children}
+            </Providers>
+          </AppProvider>
+        </AuthProvider>
       </body>
     </html>
   );

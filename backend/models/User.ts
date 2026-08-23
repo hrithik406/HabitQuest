@@ -27,7 +27,9 @@ export interface IAwardResult {
 export interface IUser extends Document {
   username: string;
   email: string;
-  passwordHash: string;
+  password: string;
+  resetPasswordToken?: string;
+  resetPasswordExpire?: Date;
   xp: number;
   gold: number;
   level: number;
@@ -87,7 +89,9 @@ const userSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
     },
-    passwordHash: { type: String, required: true },
+    password: { type: String, required: true },
+    resetPasswordToken: { type: String, required: false },
+    resetPasswordExpire: { type: Date, required: false },
     xp: { type: Number, default: 0, min: 0 },
     gold: { type: Number, default: 0, min: 0 },
     level: { type: Number, default: 1, min: 1 },

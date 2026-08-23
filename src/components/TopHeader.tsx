@@ -7,10 +7,11 @@ import { usePathname } from "next/navigation";
 import { useApp } from "../context/AppContext";
 import { getItemIcon } from "@/../shared/item"; // (or wherever your items.ts is)
 import PowerupIndicator from "./PowerupIndicator"; // ⬅️ 1. Import the new component!
+import { signOut } from "next-auth/react";
 
 export default function TopHeader() {
   const { user } = useApp();
-  const pathname = usePathname(); 
+  const pathname = usePathname();
 
   // Hide on profile page
   if (pathname === "/profile") return null;
@@ -20,16 +21,16 @@ export default function TopHeader() {
 
   return (
     <header className="max-lg:hidden sticky top-0 z-40 w-full h-16 flex items-center justify-end px-4 md:px-8 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
-      
+
       {/* ── 2. NEW FLEX CONTAINER FOR ACTIVE POWERUPS ── */}
       {user.activePowerups && user.activePowerups.length > 0 && (
         <div className="flex items-center gap-2.5 mr-6 border-r border-slate-800 pr-6 h-10">
           {user.activePowerups.map((pu) => (
             // 3. Render an indicator for each active powerup
-            <PowerupIndicator 
-              key={pu.itemId} 
-              itemId={pu.itemId} 
-              expiresAt={pu.expiresAt} 
+            <PowerupIndicator
+              key={pu.itemId}
+              itemId={pu.itemId}
+              expiresAt={pu.expiresAt}
             />
           ))}
         </div>
@@ -37,7 +38,7 @@ export default function TopHeader() {
 
       {/* Profile Link (unchanged) */}
       <Link href="/profile">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
@@ -52,7 +53,7 @@ export default function TopHeader() {
             </p>
           </div>
 
-          <motion.div 
+          <motion.div
             animate={{ y: [-3, 3, -3] }}
             transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
             className="w-10 h-10 rounded-full bg-slate-800 border-2 border-violet-500/50 flex items-center justify-center text-xl shadow-[0_0_10px_rgba(124,58,237,0.2)] group-hover:shadow-[0_0_15px_rgba(124,58,237,0.4)] transition-shadow"
@@ -61,6 +62,12 @@ export default function TopHeader() {
           </motion.div>
         </motion.div>
       </Link>
+      <button
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className="bg-red-500/20 text-red-400 px-4 py-2 rounded-lg font-bold hover:bg-red-500/30 transition-colors"
+      >
+        Log Out
+      </button>
     </header>
   );
 }

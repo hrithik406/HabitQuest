@@ -4,16 +4,22 @@ import DashboardLayout from "@/components/DashboardLayout"; // ⬅️ Check this
 import AchievementPopup from "@/components/AchievementPopUp";
 import TopHeader from "@/components/TopHeader";
 import LevelUpPopup from "@/components/LevelUpPopUp";
+import AuthProvider from "@/components/AuthProvider";
+import {AppProvider} from "@/context/AppContext";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <LevelUpPopup />
-      <AchievementPopup />
-      <DashboardLayout>
-        <TopHeader />
-        {children}
-      </DashboardLayout>
+      <AuthProvider>
+        <AppProvider>
+        <LevelUpPopup />
+        <AchievementPopup />
+        <DashboardLayout>
+          <TopHeader />
+          {children}
+        </DashboardLayout>
+        </AppProvider>
+      </AuthProvider>
     </>
   );
 }

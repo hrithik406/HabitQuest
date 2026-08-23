@@ -5,6 +5,24 @@ import { getAchievementById } from "../../shared/achievement"; // ⬅️ IMPORT 
 
 const router = Router();
 
+// ─────────────────────────────────────────────────────────────────
+// GET /api/users/:id (Fetch full user profile)
+// ─────────────────────────────────────────────────────────────────
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.params.id);
+    
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    
+    res.status(200).json({ user });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch user data" });
+  }
+});
+
 // PUT /api/users/:id/timezone
 router.put("/:id/timezone", async (req: Request<{ id: string }, {}, { timezone?: string }>, res: Response): Promise<void> => {
   try {
@@ -125,5 +143,7 @@ router.post("/:id/achievements/claim", async (req: Request, res: Response): Prom
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+
 
 export default router;
