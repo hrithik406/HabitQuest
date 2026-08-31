@@ -53,7 +53,7 @@ const FAQS = [
   }
 ];
 
-// ── ISOLATED COMPONENT: Only this tiny piece re-renders now! ──
+// ── ISOLATED COMPONENT: FAQ Accordion ──
 const FaqAccordion = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -109,13 +109,13 @@ export default function LandingPage() {
         </div>
         <div className="flex gap-4">
           <Link
-            href="/login"
+            href="/login?mode=signup" 
             className="px-5 py-2 text-sm font-semibold text-slate-300 hover:text-white transition-colors"
           >
             Sign In
           </Link>
           <Link
-            href="/signup"
+            href="/login" 
             className="px-5 py-2 text-sm font-semibold bg-violet-600 hover:bg-violet-500 rounded-xl transition-all shadow-[0_0_15px_rgba(124,58,237,0.3)] hover:shadow-[0_0_25px_rgba(124,58,237,0.5)]"
           >
             Play Now
@@ -192,7 +192,7 @@ export default function LandingPage() {
             </motion.div>
           </motion.div>
 
-          {/* NEW: Dragon Badge with Golden Border (Mid Left) */}
+          {/* Dragon Badge with Golden Border (Mid Left) */}
           <motion.div
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -208,7 +208,7 @@ export default function LandingPage() {
             </motion.div>
           </motion.div>
 
-          {/* NEW: XP Pill Icon (Mid Right) */}
+          {/* XP Pill Icon (Mid Right) */}
           <motion.div
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -266,7 +266,7 @@ export default function LandingPage() {
           transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
         >
           <Link
-            href="/signup"
+            href="/login?mode=signup" // ⬅️ FIXED: Routes to signup mode
             className="group relative inline-flex items-center gap-2 px-8 py-4 bg-white text-slate-950 font-bold text-lg rounded-2xl hover:scale-105 transition-all duration-300 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:shadow-[0_0_60px_rgba(124,58,237,0.4)]"
           >
             Start Your Quest

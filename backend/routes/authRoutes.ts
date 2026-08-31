@@ -22,25 +22,32 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // 1. Check if Email is already in use
+        // 1. Backend Email Format Validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            res.status(400).json({ error: "Invalid email format" });
+            return;
+        }
+
+        // 2. Check if Email is already in use
         const existingEmail = await User.findOne({ email });
         if (existingEmail) {
             res.status(400).json({ error: "Email already in use" });
             return;
         }
 
-        // 2. Check if Username is already in use
+        // 3. Check if Username is already in use
         const existingUsername = await User.findOne({ username });
         if (existingUsername) {
             res.status(400).json({ error: "Username is already taken" });
             return;
         }
 
-        // 3. Hash the password for security
+        // 4. Hash the password for security
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 4. Create the new user with starter stats!
+        // 5. Create the new user with starter stats
         const newUser = await User.create({
             username,
             email,
@@ -52,10 +59,10 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
             stats: { totalHabitsCompleted: 0, totalAchievements: 0, totalGoldSpent: 0, highestStreak: 0 }
         });
 
-        // 5. Generate a JWT Token
+        // 6. Generate a JWT Token
         const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: "30d" });
 
-        // 6. Send back the token and user data (excluding the password!)
+        // 7. Send back the token and user data (excluding the password)
         const userResponse = newUser.toObject();
         delete (userResponse as any).password;
 
@@ -64,7 +71,16 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
             token,
             user: userResponse
         });
-    } catch (error) {
+    } catch (error: any) {
+        console.error("REGISTER ERROR:", error);
+        
+        // Catch specific Mongoose validation errors
+        if (error.name === "ValidationError") {
+            const messages = Object.values(error.errors).map((val: any) => val.message);
+            res.status(400).json({ error: messages.join(", ") });
+            return;
+        }
+
         res.status(500).json({ error: "Server error during registration" });
     }
 });
@@ -74,24 +90,31 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
 // ─────────────────────────────────────────────────────────────────
 router.post("/login", async (req: Request, res: Response): Promise<void> => {
     try {
-        const { email, password } = req.body;
+        const { identifier, password } = req.body; // Changed 'email' to 'identifier'
 
-        if (!email || !password) {
-            res.status(400).json({ error: "Please provide email and password" });
+        if (!identifier || !password) {
+            res.status(400).json({ error: "Please provide an email/username and password" });
             return;
         }
 
-        // 1. Find the user
-        const user = await User.findOne({ email });
-        if (!user) {
-            res.status(400).json({ error: "Invalid credentials" });
+        // 1. Find the user by EITHER email OR username
+        // .select("+password") is required if your User model hides passwords by default
+        const user = await User.findOne({
+            $or: [
+                { email: identifier },
+                { username: identifier }
+            ]
+        }).select("+password");
+
+        if (!user || !user.password) {
+            res.status(401).json({ error: "Invalid credentials" });
             return;
         }
 
         // 2. Check if the password matches the hashed password in the DB
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            res.status(400).json({ error: "Invalid credentials" });
+            res.status(401).json({ error: "Invalid credentials" });
             return;
         }
 
@@ -108,12 +131,53 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
             user: userResponse
         });
     } catch (error) {
+        console.error("LOGIN ERROR:", error);
         res.status(500).json({ error: "Server error during login" });
     }
 });
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/auth/forgot-password
+// POST /api/auth/oauth (Social Login Sync)
+// ─────────────────────────────────────────────────────────────────
+router.post("/oauth", async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email, username, provider } = req.body;
+
+        // 1. Check if user already exists
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // 2. If new, create an account automatically
+            // Generate a random dummy password since they use OAuth
+            const dummyPassword = crypto.randomBytes(20).toString('hex');
+            
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(dummyPassword, salt);
+
+            // Remove spaces and add random numbers to ensure a unique username
+            const uniqueUsername = username.replace(/\s+/g, '') + Math.floor(Math.random() * 10000);
+
+            user = await User.create({
+                email,
+                username: uniqueUsername,
+                password: hashedPassword,
+                level: 1,
+                gold: 0,
+                xp: 0,
+                xpProgress: { percentage: 0 },
+                stats: { totalHabitsCompleted: 0, totalAchievements: 0, totalGoldSpent: 0, highestStreak: 0 }
+            });
+        }
+
+        res.status(200).json({ message: "OAuth sync successful", user });
+    } catch (error) {
+        console.error("OAUTH ERROR:", error);
+        res.status(500).json({ error: "Failed to sync OAuth user" });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// POST /api/auth/forgot-password (OTP Flow)
 // ─────────────────────────────────────────────────────────────────
 router.post("/forgot-password", async (req: Request, res: Response): Promise<void> => {
     try {
@@ -121,32 +185,26 @@ router.post("/forgot-password", async (req: Request, res: Response): Promise<voi
         const user = await User.findOne({ email });
 
         if (!user) {
-            // For security, don't reveal if the email exists or not
-            res.status(200).json({ message: "If that email exists, a reset link has been sent." });
+            res.status(200).json({ message: "If that email exists, an OTP has been sent." });
             return;
         }
 
-        // 1. Generate a secure random token
-        const resetToken = crypto.randomBytes(32).toString("hex");
-        const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-        const expireDate = new Date(Date.now() + 15 * 60 * 1000);
+        // 1. Generate a 6-digit numeric OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expireDate = new Date(Date.now() + 10 * 60 * 1000); // Valid for 10 minutes
 
-        // 2. Directly update only the token fields in the database (bypasses full document validation)
+        // 2. Directly update only the token fields in the database
         await User.updateOne(
             { _id: user._id },
             {
                 $set: {
-                    resetPasswordToken: hashedToken,
+                    resetPasswordToken: otp,
                     resetPasswordExpire: expireDate
                 }
             }
         );
 
-        // 3. Create the reset URL (Points to your Next.js frontend!)
-        const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
-
-        // 4. Setup Nodemailer (Using a free Ethereal test account for local dev)
-        // NOTE: In production, you'd use a real service like Resend, SendGrid, or Gmail
+        // 3. Setup Nodemailer (Using Ethereal for local dev)
         const testAccount = await nodemailer.createTestAccount();
         const transporter = nodemailer.createTransport({
             host: "smtp.ethereal.email",
@@ -158,22 +216,22 @@ router.post("/forgot-password", async (req: Request, res: Response): Promise<voi
             },
         });
 
-        // 5. Send the email
+        // 4. Send the OTP email
         const info = await transporter.sendMail({
             from: '"HabitQuest Support" <support@habitquest.com>',
             to: user.email,
-            subject: "Password Reset Request",
+            subject: "Your Password Reset OTP",
             html: `
         <h2>Password Reset</h2>
-        <p>You requested a password reset. Click the link below to set a new password. This link is valid for 15 minutes.</p>
-        <a href="${resetUrl}" target="_blank">Reset My Password</a>
+        <p>Your password reset OTP is: <strong>${otp}</strong></p>
+        <p>This code is valid for 10 minutes.</p>
         <p>If you didn't request this, you can safely ignore this email.</p>
       `,
         });
 
         console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info));
 
-        res.status(200).json({ message: "If that email exists, a reset link has been sent." });
+        res.status(200).json({ message: "If that email exists, an OTP has been sent." });
     } catch (error) {
         console.log("Error sending reset email:", error);
         res.status(500).json({ error: "Email could not be sent" });
@@ -181,36 +239,36 @@ router.post("/forgot-password", async (req: Request, res: Response): Promise<voi
 });
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/auth/reset-password/:token
+// POST /api/auth/reset-password (OTP Verification)
 // ─────────────────────────────────────────────────────────────────
-router.post("/reset-password/:token", async (req: Request, res: Response): Promise<void> => {
+router.post("/reset-password", async (req: Request, res: Response): Promise<void> => {
     try {
-        // 1. Re-hash the token from the URL to compare it with our database
-        const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+        const { email, otp, password } = req.body;
 
-        // 2. Find the user with this exact token, ensuring it hasn't expired
-        // ⬇️ UPDATED TO new Date() ⬇️
+        // 1. Find the user with this email AND a valid, unexpired OTP
         const user = await User.findOne({
-            resetPasswordToken: hashedToken,
+            email: email,
+            resetPasswordToken: otp,
             resetPasswordExpire: { $gt: new Date() },
         });
 
         if (!user) {
-            res.status(400).json({ error: "Invalid or expired reset token" });
+            res.status(400).json({ error: "Invalid or expired OTP" });
             return;
         }
 
-        // 3. Hash the new password securely
+        // 2. Hash the new password securely
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(req.body.password, salt);
+        user.password = await bcrypt.hash(password, salt);
 
-        // 4. Clear the temporary reset tokens from the database so they can't be reused
+        // 3. Clear the OTP from the database so it can't be reused
         user.resetPasswordToken = undefined;
         user.resetPasswordExpire = undefined;
         await user.save();
 
         res.status(200).json({ message: "Password updated successfully" });
     } catch (error) {
+        console.error("OTP RESET ERROR:", error);
         res.status(500).json({ error: "Server error during password reset" });
     }
 });
