@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import Providers from "./providers";
-import DashboardLayout from "../components/DashboardLayout";
 import ThemeInjector from "@/components/ThemeInjector";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";

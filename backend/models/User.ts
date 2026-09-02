@@ -57,6 +57,10 @@ export interface IUser extends Document {
   };
 
   unlockedAchievements: { achievementId: string; unlockedAt: Date; isClaimed: boolean }[];
+
+  isVerified: Boolean ;
+  verificationToken: String | null ;
+  verificationExpire: Date | null ;
 }
 
 // ── Model interface (for statics if needed later) ─────────────────
@@ -125,6 +129,11 @@ const userSchema = new Schema<IUser>(
       }],
       default: []
     },
+
+    // Verification Fields
+    isVerified: { type: Boolean, default: false },
+    verificationToken: { type: String },
+    verificationExpire: { type: Date },
   },
   { timestamps: true }
 );
@@ -136,14 +145,20 @@ userSchema.virtual("xpForNextLevel").get(function (this: IUser): number {
 });
 
 userSchema.virtual("xpProgress").get(function (this: IUser): IXpProgress {
-  const current = Math.floor(100 * Math.pow(this.level, 1.5));
-  const next = Math.floor(100 * Math.pow(this.level + 1, 1.5));
+  // Level 1 starts at 0 XP. All other levels use the formula.
+  const currentLevelBaseXp = this.level === 1 ? 0 : Math.floor(100 * Math.pow(this.level, 1.5));
+  const nextLevelBaseXp = Math.floor(100 * Math.pow(this.level + 1, 1.5));
+
   return {
-    current: this.xp - current,
-    required: next - current,
-    percentage: Math.min(
-      100,
-      Math.floor(((this.xp - current) / (next - current)) * 100)
+    current: this.xp - currentLevelBaseXp,
+    required: nextLevelBaseXp - currentLevelBaseXp,
+    // Math.max(0, ...) ensures percentage never visually drops below 0
+    percentage: Math.max(
+      0,
+      Math.min(
+        100,
+        Math.floor(((this.xp - currentLevelBaseXp) / (nextLevelBaseXp - currentLevelBaseXp)) * 100)
+      )
     ),
   };
 });

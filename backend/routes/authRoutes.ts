@@ -10,6 +10,18 @@ const router = Router();
 // Your secret key for signing tokens (In production, put this in a .env file!)
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_habit_key_123";
 
+// ── HIGH-SPEED GMAIL TRANSPORTER ──
+const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true, // true for 465, false for other ports
+    pool: true,   // Keeps the connection open for faster sending
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+    },
+});
+
 // ─────────────────────────────────────────────────────────────────
 // POST /api/auth/register
 // ─────────────────────────────────────────────────────────────────
@@ -47,41 +59,131 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 5. Create the new user with starter stats
+        // 1. Generate a secure random token for the URL
+        const verifyToken = crypto.randomBytes(32).toString("hex");
+        const hashedToken = crypto.createHash("sha256").update(verifyToken).digest("hex");
+        const expireDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // Valid for 24 hours
+
+        // 2. Create the unverified user
         const newUser = await User.create({
-            username,
-            email,
-            password: hashedPassword,
-            level: 1,
-            gold: 0,
-            xp: 0,
-            xpProgress: { percentage: 0 },
+            username, email, password: hashedPassword,
+            isVerified: false,
+            verificationToken: hashedToken,
+            verificationExpire: expireDate,
+            level: 1, gold: 0, xp: 0, xpProgress: { percentage: 0 },
             stats: { totalHabitsCompleted: 0, totalAchievements: 0, totalGoldSpent: 0, highestStreak: 0 }
         });
 
-        // 6. Generate a JWT Token
-        const token = jwt.sign({ id: newUser._id }, JWT_SECRET, { expiresIn: "30d" });
+        // 3. Create the Magic Link
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+        const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        // 7. Send back the token and user data (excluding the password)
-        const userResponse = newUser.toObject();
-        delete (userResponse as any).password;
+        // 🚨 FAST SEND: Notice we removed the "await" keyword here!
+        // This lets the email send in the background without freezing the server.
+        transporter.sendMail({
+            from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "Verify Your HabitQuest Account",
+            html: `
+                <div style="text-align: center; font-family: sans-serif; padding: 20px;">
+                    <h2>Welcome to HabitQuest, ${username}!</h2>
+                    <p>Click the button below to verify your account and jump into the game.</p>
+                    <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
+                        Verify & Play
+                    </a>
+                    <p style="margin-top: 20px; font-size: 12px; color: #666;">This link expires in 24 hours.</p>
+                </div>
+            `
+        }).catch(err => console.error("Background Email Error:", err));
 
-        res.status(201).json({
-            message: "User registered successfully",
-            token,
-            user: userResponse
-        });
+        // 4. Instantly reply to the frontend!
+        res.status(201).json({ message: "Verification link sent to email", requiresVerification: true });
     } catch (error: any) {
-        console.error("REGISTER ERROR:", error);
-        
-        // Catch specific Mongoose validation errors
-        if (error.name === "ValidationError") {
-            const messages = Object.values(error.errors).map((val: any) => val.message);
-            res.status(400).json({ error: messages.join(", ") });
+        res.status(500).json({ error: "Server error during registration" });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// POST /api/auth/verify-email (Handles the Magic Link click)
+// ─────────────────────────────────────────────────────────────────
+router.post("/verify-email", async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email, token } = req.body;
+
+        // 1. Hash the token from the URL to compare with the database
+        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+        const user = await User.findOne({
+            email,
+            verificationToken: hashedToken,
+            verificationExpire: { $gt: new Date() }
+        });
+
+        if (!user) {
+            res.status(400).json({ error: "Invalid or expired verification link." });
             return;
         }
 
-        res.status(500).json({ error: "Server error during registration" });
+        // 2. Activate Account
+        user.isVerified = true;
+        user.verificationToken = null;
+        user.verificationExpire = null;
+        await user.save();
+
+        // 3. Generate JWT Token so NextAuth can log them in immediately
+        const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, { expiresIn: "30d" });
+        const userResponse = user.toObject();
+        delete (userResponse as any).password;
+
+        res.status(200).json({ message: "Verified!", token: jwtToken, user: userResponse });
+    } catch (error) {
+        res.status(500).json({ error: "Server error during verification" });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────
+// POST /api/auth/resend-verification (Magic Link version)
+// ─────────────────────────────────────────────────────────────────
+router.post("/resend-verification", async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        if (!user || user.isVerified) {
+            res.status(400).json({ error: "User not found or already verified." });
+            return;
+        }
+
+        // Generate a fresh URL token & 24-hour timer
+        const verifyToken = crypto.randomBytes(32).toString("hex");
+        const hashedToken = crypto.createHash("sha256").update(verifyToken).digest("hex");
+        
+        user.verificationToken = hashedToken;
+        user.verificationExpire = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        await user.save();
+
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+        const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
+
+        transporter.sendMail({
+            from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "Verify Your HabitQuest Account",
+            html: `
+                <div style="text-align: center; font-family: sans-serif; padding: 20px;">
+                    <h2>Welcome to HabitQuest, ${username}!</h2>
+                    <p>Click the button below to verify your account and jump into the game.</p>
+                    <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
+                        Verify & Play
+                    </a>
+                    <p style="margin-top: 20px; font-size: 12px; color: #666;">This link expires in 24 hours.</p>
+                </div>
+            `
+        }).catch(err => console.error("Background Email Error:", err));
+
+        res.status(200).json({ message: "A new magic link has been sent." });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to resend link" });
     }
 });
 
@@ -108,6 +210,11 @@ router.post("/login", async (req: Request, res: Response): Promise<void> => {
 
         if (!user || !user.password) {
             res.status(401).json({ error: "Invalid credentials" });
+            return;
+        }
+
+        if (user.isVerified === false) {
+            res.status(403).json({ error: "Please verify your email before logging in. Check your inbox!" });
             return;
         }
 
@@ -150,7 +257,7 @@ router.post("/oauth", async (req: Request, res: Response): Promise<void> => {
             // 2. If new, create an account automatically
             // Generate a random dummy password since they use OAuth
             const dummyPassword = crypto.randomBytes(20).toString('hex');
-            
+
             const salt = await bcrypt.genSalt(10);
             const hashedPassword = await bcrypt.hash(dummyPassword, salt);
 

@@ -25,10 +25,26 @@ const handler = NextAuth({
       name: "Credentials",
       credentials: {
         identifier: { label: "Email or Username", type: "text", placeholder: "player@habit.com or HeroName" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
+        action: { type: "text" }, 
+        token: { type: "text" },
+        email: { type: "text" }
       },
       async authorize(credentials) {
         try {
+          // ── IF THEY CLICKED THE EMAIL LINK ──
+          if (credentials?.action === "verify") {
+            const res = await fetch("http://localhost:5000/api/auth/verify-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: credentials.email, token: credentials.token }),
+            });
+            const data = await res.json();
+            if (res.ok && data.user) {
+              return { id: data.user._id, name: data.user.username, email: data.user.email, expressToken: data.token };
+            }
+            return null;
+          }
           // Using localhost as requested
           const res = await fetch("http://localhost:5000/api/auth/login", {
             method: "POST",
