@@ -10,12 +10,9 @@ const router = Router();
 // Your secret key for signing tokens (In production, put this in a .env file!)
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_habit_key_123";
 
-// ── HIGH-SPEED GMAIL TRANSPORTER ──
+// ── GMAIL TRANSPORTER ──
 const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true, // true for 465, false for other ports
-    pool: true,   // Keeps the connection open for faster sending
+    service: "gmail",
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -80,10 +77,11 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
 
         // 🚨 FAST SEND: Notice we removed the "await" keyword here!
         // This lets the email send in the background without freezing the server.
-        transporter.sendMail({
+        await transporter.sendMail({
             from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: "Verify Your HabitQuest Account",
+            subject: "Here is your HabitQuest link!", // Changed to look less like a robot
+            text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
             html: `
                 <div style="text-align: center; font-family: sans-serif; padding: 20px;">
                     <h2>Welcome to HabitQuest, ${username}!</h2>
@@ -91,10 +89,9 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
                     <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
                         Verify & Play
                     </a>
-                    <p style="margin-top: 20px; font-size: 12px; color: #666;">This link expires in 24 hours.</p>
                 </div>
             `
-        }).catch(err => console.error("Background Email Error:", err));
+        });
 
         // 4. Instantly reply to the frontend!
         res.status(201).json({ message: "Verification link sent to email", requiresVerification: true });
@@ -146,7 +143,7 @@ router.post("/verify-email", async (req: Request, res: Response): Promise<void> 
 // ─────────────────────────────────────────────────────────────────
 router.post("/resend-verification", async (req: Request, res: Response): Promise<void> => {
     try {
-        const { email } = req.body;
+        const { username , email } = req.body;
         const user = await User.findOne({ email });
 
         if (!user || user.isVerified) {
@@ -165,10 +162,11 @@ router.post("/resend-verification", async (req: Request, res: Response): Promise
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        transporter.sendMail({
+        await transporter.sendMail({
             from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: "Verify Your HabitQuest Account",
+            subject: "Here is your HabitQuest link!", // Changed to look less like a robot
+            text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
             html: `
                 <div style="text-align: center; font-family: sans-serif; padding: 20px;">
                     <h2>Welcome to HabitQuest, ${username}!</h2>
@@ -176,10 +174,9 @@ router.post("/resend-verification", async (req: Request, res: Response): Promise
                     <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
                         Verify & Play
                     </a>
-                    <p style="margin-top: 20px; font-size: 12px; color: #666;">This link expires in 24 hours.</p>
                 </div>
             `
-        }).catch(err => console.error("Background Email Error:", err));
+        });
 
         res.status(200).json({ message: "A new magic link has been sent." });
     } catch (error) {

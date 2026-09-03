@@ -195,7 +195,6 @@ router.get("/", async (req: Request, res: Response): Promise<void> => {
     const habits = await Habit.find({ userId, isArchived: false }).sort({ createdAt: 1 });
     // ⬇️ 1. Variable to track the true highest streak across all habits
     let actualHighestStreak = 0;
-    let userNeedsSave = false;
 
     for (let habit of habits) {
       let needsSave = false;
