@@ -3,9 +3,9 @@ import express, { Application, Request, Response } from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import habitRoutes from "./routes/habitRoutes";
-import userRoutes  from "./routes/userRoutes";
 import rewardRoutes from "./routes/rewardRoutes";
 import authRoutes from "./routes/authRoutes";
+import userRoutes from "./routes/userRoutes";
 
 const app: Application = express();
 
