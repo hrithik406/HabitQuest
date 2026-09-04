@@ -20,11 +20,11 @@ import type {
 } from "../types/types";
 import { getDateIsoInTimeZone } from "../utils/date";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
 // ── Typed fetch helper ────────────────────────────────────────────
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });
@@ -197,7 +197,7 @@ const loadInitialState = (): AppState => {
     const savedState = localStorage.getItem("habitTrackerState");
     if (savedState) {
       try {
-        return JSON.parse(savedState);
+        return JSON.parse(savedState) as AppState;
       } catch (e) {
         console.error("Failed to parse local storage state", e);
       }

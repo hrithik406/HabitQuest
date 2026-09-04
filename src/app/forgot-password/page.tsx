@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
   
   // Multi-step flow state
   const [step, setStep] = useState<1 | 2>(1);
@@ -32,7 +34,7 @@ export default function ForgotPasswordPage() {
     setMessage("");
 
     try {
-      const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password", {
+      const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -67,7 +69,7 @@ export default function ForgotPasswordPage() {
     setMessage("");
 
     try {
-      const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password", {
+      const res = await fetch(`${API_URL}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, otp, password: newPassword }),

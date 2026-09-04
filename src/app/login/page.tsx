@@ -9,6 +9,8 @@ import Link from "next/link";
 function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
 
     const [isLogin, setIsLogin] = useState(true);
 
@@ -56,7 +58,7 @@ function LoginContent() {
         setCanResend(false);
         setCountdown(60);
         try {
-            await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-verification", {
+            await fetch(`${API_URL}/api/auth/resend-verification`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
@@ -97,7 +99,7 @@ function LoginContent() {
                 router.push("/dashboard");
 
             } else {
-                const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/register", {
+                const res = await fetch(`${API_URL}/api/auth/register`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username, email, password }),
