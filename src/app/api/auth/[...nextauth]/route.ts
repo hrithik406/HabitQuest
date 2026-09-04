@@ -34,7 +34,7 @@ const handler = NextAuth({
         try {
           // ── IF THEY CLICKED THE EMAIL LINK ──
           if (credentials?.action === "verify") {
-            const res = await fetch("http://localhost:5000/api/auth/verify-email", {
+            const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify-email", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ email: credentials.email, token: credentials.token }),
@@ -46,7 +46,7 @@ const handler = NextAuth({
             return null;
           }
           // Using localhost as requested
-          const res = await fetch("http://localhost:5000/api/auth/login", {
+          const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/login", {
             method: "POST",
             body: JSON.stringify({
               identifier: credentials?.identifier,
@@ -81,7 +81,7 @@ const handler = NextAuth({
       if (account?.provider !== "credentials") {
         try {
           // Sync the social user with your Express backend
-          const res = await fetch("http://localhost:5000/api/auth/oauth", {
+          const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/oauth", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

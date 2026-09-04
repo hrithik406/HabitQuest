@@ -56,7 +56,7 @@ function LoginContent() {
         setCanResend(false);
         setCountdown(60);
         try {
-            await fetch("http://localhost:5000/api/auth/resend-verification", {
+            await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/resend-verification", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
@@ -97,7 +97,7 @@ function LoginContent() {
                 router.push("/dashboard");
 
             } else {
-                const res = await fetch("http://localhost:5000/api/auth/register", {
+                const res = await fetch("${process.env.NEXT_PUBLIC_API_URL}/api/auth/register", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ username, email, password }),
@@ -128,7 +128,7 @@ function LoginContent() {
 
     return (
         <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-600/20 blur-[120px] rounded-full pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-150 h-150 bg-violet-600/20 blur-[120px] rounded-full pointer-events-none" />
 
             <motion.div
                 initial={{ opacity: 0, y: 20 }}
