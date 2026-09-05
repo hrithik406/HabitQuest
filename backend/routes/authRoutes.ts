@@ -77,25 +77,26 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
 
         // 🚨 FAST SEND: Notice we removed the "await" keyword here!
         // This lets the email send in the background without freezing the server.
-        await transporter.sendMail({
-            from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Here is your HabitQuest link!", // Changed to look less like a robot
-            text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
-            html: `
-                <div style="text-align: center; font-family: sans-serif; padding: 20px;">
-                    <h2>Welcome to HabitQuest, ${username}!</h2>
-                    <p>Click the button below to verify your account and jump into the game.</p>
-                    <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
-                        Verify & Play
-                    </a>
-                </div>
-            `
-        });
+        // await transporter.sendMail({
+        //     from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
+        //     to: email,
+        //     subject: "Here is your HabitQuest link!", // Changed to look less like a robot
+        //     text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
+        //     html: `
+        //         <div style="text-align: center; font-family: sans-serif; padding: 20px;">
+        //             <h2>Welcome to HabitQuest, ${username}!</h2>
+        //             <p>Click the button below to verify your account and jump into the game.</p>
+        //             <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
+        //                 Verify & Play
+        //             </a>
+        //         </div>
+        //     `
+        // });
 
         // 4. Instantly reply to the frontend!
-        res.status(201).json({ message: "Verification link sent to email", requiresVerification: true });
+        // res.status(201).json({ message: "Verification link sent to email", requiresVerification: true });
     } catch (error: any) {
+        console.error("REGISTER ERROR:", error); // 🚨 Add this line!
         res.status(500).json({ error: "Server error during registration" });
     }
 });
@@ -162,23 +163,23 @@ router.post("/resend-verification", async (req: Request, res: Response): Promise
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        await transporter.sendMail({
-            from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Here is your HabitQuest link!", // Changed to look less like a robot
-            text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
-            html: `
-                <div style="text-align: center; font-family: sans-serif; padding: 20px;">
-                    <h2>Welcome to HabitQuest, ${username}!</h2>
-                    <p>Click the button below to verify your account and jump into the game.</p>
-                    <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
-                        Verify & Play
-                    </a>
-                </div>
-            `
-        });
+        // await transporter.sendMail({
+        //     from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
+        //     to: email,
+        //     subject: "Here is your HabitQuest link!", // Changed to look less like a robot
+        //     text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
+        //     html: `
+        //         <div style="text-align: center; font-family: sans-serif; padding: 20px;">
+        //             <h2>Welcome to HabitQuest, ${username}!</h2>
+        //             <p>Click the button below to verify your account and jump into the game.</p>
+        //             <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
+        //                 Verify & Play
+        //             </a>
+        //         </div>
+        //     `
+        // });
 
-        res.status(200).json({ message: "A new magic link has been sent." });
+        // res.status(200).json({ message: "A new magic link has been sent." });
     } catch (error) {
         res.status(500).json({ error: "Failed to resend link" });
     }
