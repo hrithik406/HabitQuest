@@ -31,37 +31,31 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
             return;
         }
 
-        // 1. Backend Email Format Validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             res.status(400).json({ error: "Invalid email format" });
             return;
         }
 
-        // 2. Check if Email is already in use
         const existingEmail = await User.findOne({ email });
         if (existingEmail) {
             res.status(400).json({ error: "Email already in use" });
             return;
         }
 
-        // 3. Check if Username is already in use
         const existingUsername = await User.findOne({ username });
         if (existingUsername) {
             res.status(400).json({ error: "Username is already taken" });
             return;
         }
 
-        // 4. Hash the password for security
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // 1. Generate a secure random token for the URL
         const verifyToken = crypto.randomBytes(32).toString("hex");
         const hashedToken = crypto.createHash("sha256").update(verifyToken).digest("hex");
-        const expireDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // Valid for 24 hours
+        const expireDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-        // 2. Create the unverified user
         const newUser = await User.create({
             username, email, password: hashedPassword,
             isVerified: false,
@@ -71,44 +65,47 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
             stats: { totalHabitsCompleted: 0, totalAchievements: 0, totalGoldSpent: 0, highestStreak: 0 }
         });
 
-        // 3. Create the Magic Link
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        // 🚨 FAST SEND: Notice we removed the "await" keyword here!
-        // This lets the email send in the background without freezing the server.
-        // await transporter.sendMail({
-        //     from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
-        //     to: email,
-        //     subject: "Here is your HabitQuest link!", // Changed to look less like a robot
-        //     text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
-        //     html: `
-        //         <div style="text-align: center; font-family: sans-serif; padding: 20px;">
-        //             <h2>Welcome to HabitQuest, ${username}!</h2>
-        //             <p>Click the button below to verify your account and jump into the game.</p>
-        //             <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
-        //                 Verify & Play
-        //             </a>
-        //         </div>
-        //     `
-        // });
+        // 🚨 FIX 1: Removed 'await' so this runs in the background. Added .catch() for silent failures.
+        transporter.sendMail({
+            from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "Here is your HabitQuest link!",
+            text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`,
+            html: `
+                <div style="text-align: center; font-family: sans-serif; padding: 20px;">
+                    <h2>Welcome to HabitQuest, ${username}!</h2>
+                    <p>Click the button below to verify your account and jump into the game.</p>
+                    <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
+                        Verify & Play
+                    </a>
+                </div>
+            `
+        }).catch(err => console.error("Background Email Error:", err));
 
-        // 4. Instantly reply to the frontend!
-        // res.status(201).json({ message: "Verification link sent to email", requiresVerification: true });
+        // Instantly reply to the frontend!
+        res.status(201).json({ message: "Verification link sent to email", requiresVerification: true });
     } catch (error: any) {
-        console.error("REGISTER ERROR:", error); // 🚨 Add this line!
+        console.error("REGISTRATION ERROR:", error);
         res.status(500).json({ error: "Server error during registration" });
     }
 });
 
 // ─────────────────────────────────────────────────────────────────
-// POST /api/auth/verify-email (Handles the Magic Link click)
+// POST /api/auth/verify-email
 // ─────────────────────────────────────────────────────────────────
 router.post("/verify-email", async (req: Request, res: Response): Promise<void> => {
     try {
         const { email, token } = req.body;
 
-        // 1. Hash the token from the URL to compare with the database
+        // 🚨 FIX 2: Prevent Crypto from crashing if the frontend sends a blank request
+        if (!email || !token) {
+            res.status(400).json({ error: "Missing email or verification token." });
+            return;
+        }
+
         const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
         const user = await User.findOne({
@@ -122,19 +119,20 @@ router.post("/verify-email", async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        // 2. Activate Account
+        // Clear the verification fields after successful verification.
         user.isVerified = true;
         user.verificationToken = null;
         user.verificationExpire = null;
         await user.save();
 
-        // 3. Generate JWT Token so NextAuth can log them in immediately
         const jwtToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET as string, { expiresIn: "30d" });
         const userResponse = user.toObject();
         delete (userResponse as any).password;
 
         res.status(200).json({ message: "Verified!", token: jwtToken, user: userResponse });
     } catch (error) {
+        // 🚨 FIX 4: Actually log the error so it isn't silent
+        console.error("VERIFY ERROR:", error);
         res.status(500).json({ error: "Server error during verification" });
     }
 });
@@ -163,23 +161,23 @@ router.post("/resend-verification", async (req: Request, res: Response): Promise
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        // await transporter.sendMail({
-        //     from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
-        //     to: email,
-        //     subject: "Here is your HabitQuest link!", // Changed to look less like a robot
-        //     text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
-        //     html: `
-        //         <div style="text-align: center; font-family: sans-serif; padding: 20px;">
-        //             <h2>Welcome to HabitQuest, ${username}!</h2>
-        //             <p>Click the button below to verify your account and jump into the game.</p>
-        //             <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
-        //                 Verify & Play
-        //             </a>
-        //         </div>
-        //     `
-        // });
+        transporter.sendMail({
+            from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
+            to: email,
+            subject: "Here is your HabitQuest link!", // Changed to look less like a robot
+            text: `Welcome to HabitQuest, ${username}! Verify your account by pasting this link in your browser: ${verifyUrl}`, // 🚨 NEW: Plain text lowers spam score!
+            html: `
+                <div style="text-align: center; font-family: sans-serif; padding: 20px;">
+                    <h2>Welcome to HabitQuest, ${username}!</h2>
+                    <p>Click the button below to verify your account and jump into the game.</p>
+                    <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
+                        Verify & Play
+                    </a>
+                </div>
+            `
+        }).catch(err => console.error("Background Email Error:", err));
 
-        // res.status(200).json({ message: "A new magic link has been sent." });
+        res.status(200).json({ message: "A new magic link has been sent." });
     } catch (error) {
         res.status(500).json({ error: "Failed to resend link" });
     }
