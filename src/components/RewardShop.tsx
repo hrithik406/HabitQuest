@@ -13,7 +13,7 @@ export default function RewardShop(): ReactElement {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; msg: string } | null>(null);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000/api";
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
 
   const isEquipped = (itemId: string, itemCategory: string): boolean => {
     if (itemCategory === "theme") return user?.activeTheme === itemId;
@@ -31,7 +31,7 @@ export default function RewardShop(): ReactElement {
     if (loadingId || !user) return;
     setLoadingId(item.id);
     try {
-      const res = await fetch(`${API_BASE}/rewards/buy`, {
+      const res = await fetch(`${API_BASE}/api/rewards/buy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user._id, itemId: item.id }),

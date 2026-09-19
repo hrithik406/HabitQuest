@@ -257,32 +257,52 @@ export function AppProvider({ children }: AppProviderProps): ReactElement {
     }
   }, [userId]);
 
-  // ── completeHabit ─────────────────────────────────────────────
-  const completeHabit = useCallback(
-    async (habitId: string): Promise<CompleteHabitResponse> => {
-      if (!userId) throw new Error("User not authenticated"); // ⬅️ Safety guard
+// ── completeHabit ─────────────────────────────────────────────
+const completeHabit = useCallback(
+async (habitId: string): Promise<CompleteHabitResponse> => {
+  if (!userId) throw new Error("User not authenticated");
 
-      const timeZone = state.user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const data = await api.completeHabit(habitId, userId, timeZone).catch((err) => {
-        throw new Error(err instanceof Error ? err.message : "Could not complete habit");
-      });
-      
-      dispatch({ type: "UPDATE_HABIT", payload: data.habit });
-      dispatch({ type: "UPDATE_USER", payload: data.user });
-      dispatch({
-        type: "SET_LAST_REWARD",
-        payload: { ...data.rewards, ...data.levelResult, ...data.streakResult },
-      });
+  // 1. Save original for rollback
+  const originalHabit = state.habits.find(h => h._id === habitId);
+  
+  // 2. Dispatch the exact optimistic type
+  dispatch({
+    type: "OPTIMISTIC_TOGGLE",
+    payload: { habitId , milestoneId: "" }
+  });
 
-      if (data.newlyUnlocked && data.newlyUnlocked.length > 0) {
-        window.dispatchEvent(
-          new CustomEvent("achievement-unlocked", { detail: data.newlyUnlocked })
-        );
-      }
-      return data;
-    },
-    [userId, state.user?.timezone],
-  );
+  try {
+    const timeZone = state.user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // 3. Background API Call
+    const data = await api.completeHabit(habitId, userId, timeZone);
+    
+    // 4. Confirm with real server data
+    dispatch({ type: "UPDATE_HABIT", payload: data.habit });
+    dispatch({ type: "UPDATE_USER", payload: data.user });
+    dispatch({
+      type: "SET_LAST_REWARD",
+      payload: { ...data.rewards, ...data.levelResult, ...data.streakResult },
+    });
+
+    if (data.newlyUnlocked && data.newlyUnlocked.length > 0) {
+      window.dispatchEvent(
+        new CustomEvent("achievement-unlocked", { detail: data.newlyUnlocked })
+      );
+    }
+    return data;
+  } catch (err) {
+    // 🚨 Rollback if it fails
+    if (originalHabit) {
+      dispatch({ type: "UPDATE_HABIT", payload: originalHabit });
+    }
+    throw new Error(
+      err instanceof Error ? err.message : "Failed to complete habit"
+    );
+  }
+},
+[userId, state.user?.timezone, state.habits]
+);
 
   const undoHabit = useCallback(
     async (habitId: string) => {

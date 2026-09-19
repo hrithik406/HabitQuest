@@ -5,19 +5,21 @@ import AchievementPopup from "@/components/AchievementPopUp";
 import TopHeader from "@/components/TopHeader";
 import LevelUpPopup from "@/components/LevelUpPopUp";
 import AuthProvider from "@/components/AuthProvider";
-import {AppProvider} from "@/context/AppContext";
+import { AppProvider } from "@/context/AppContext";
+import ThemeInjector from "@/components/ThemeInjector";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
       <AuthProvider>
         <AppProvider>
-        <LevelUpPopup />
-        <AchievementPopup />
-        <DashboardLayout>
-          <TopHeader />
-          {children}
-        </DashboardLayout>
+          <LevelUpPopup />
+          <AchievementPopup />
+          <ThemeInjector />
+          <DashboardLayout>
+            <TopHeader />
+            {children}
+          </DashboardLayout>
         </AppProvider>
       </AuthProvider>
     </>

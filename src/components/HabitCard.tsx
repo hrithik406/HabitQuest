@@ -271,7 +271,7 @@ const HabitCard = memo(function HabitCard({ habit }: { habit: Habit }): ReactEle
         setReward(data.rewards);
         setJustCompleted(true);
         setTimeout(() => setReward(null), 2200);
-        setTimeout(() => setJustCompleted(false), 900);
+        // setTimeout(() => setJustCompleted(false), 900);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Something went wrong";
@@ -292,7 +292,7 @@ const HabitCard = memo(function HabitCard({ habit }: { habit: Habit }): ReactEle
         setReward(data.completion.rewards);
         setJustCompleted(true);
         setTimeout(() => setReward(null), 2200);
-        setTimeout(() => setJustCompleted(false), 900);
+        // setTimeout(() => setJustCompleted(false), 900);
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Could not update milestone";
