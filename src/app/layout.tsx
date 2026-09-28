@@ -37,7 +37,6 @@ export default function RootLayout({
         <AuthProvider>
           <AppProvider>
             <Providers>
-              <ThemeInjector />
               {children}
             </Providers>
           </AppProvider>
