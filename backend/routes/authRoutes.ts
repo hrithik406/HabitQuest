@@ -74,7 +74,7 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        transporter.sendMail({
+        await transporter.sendMail({
             from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: "Your HabitQuest Verification Code",
@@ -182,7 +182,7 @@ router.post("/resend-verification", async (req: Request, res: Response): Promise
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        transporter.sendMail({
+        await transporter.sendMail({
             from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
             to: email,
             subject: "Your New HabitQuest Verification Code",
@@ -332,7 +332,7 @@ try {
     );
 
     // 3. 🚨 Send via the global Gmail transporter (No Ethereal!)
-    transporter.sendMail({
+    await transporter.sendMail({
         from: `"HabitQuest Support" <${process.env.EMAIL_USER}>`,
         to: user.email,
         subject: "Your HabitQuest Password Reset OTP",
