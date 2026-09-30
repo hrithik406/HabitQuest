@@ -11,7 +11,6 @@ function LoginContent() {
     const searchParams = useSearchParams();
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-
     const [isLogin, setIsLogin] = useState(true);
 
     useEffect(() => {
@@ -34,6 +33,9 @@ function LoginContent() {
     const [username, setUsername] = useState(""); 
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    
+    // 🚨 NEW: Added state for the 6-digit code
+    const [otp, setOtp] = useState("");
 
     const [error, setError] = useState("");
     const [successMsg, setSuccessMsg] = useState("");
@@ -66,6 +68,29 @@ function LoginContent() {
         } catch (err) {
             console.error("Resend error:", err);
         }
+    };
+
+    // 🚨 NEW: Function to handle OTP verification via NextAuth
+    const handleVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setIsLoading(true);
+
+        const res = await signIn("credentials", {
+            redirect: false,
+            action: "verify",
+            email,
+            otp
+        });
+
+        if (res?.error) {
+            setError("Invalid or expired code. Please try again.");
+            setIsLoading(false);
+            return;
+        }
+
+        router.refresh();
+        router.push("/dashboard");
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -114,7 +139,7 @@ function LoginContent() {
                 }
 
                 if (data.requiresVerification) {
-                    setSuccessMsg("Account created! 💌 We've sent a magic link to your inbox.");
+                    setSuccessMsg("Enter the 6-digit code sent to your inbox.");
                     setCountdown(60);
                     setCanResend(false);
                     setIsLoading(false);
@@ -168,15 +193,28 @@ function LoginContent() {
                             {successMsg}
                         </div>
                         
-                        <a 
-                            href="https://mail.google.com" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-slate-200 font-black py-3.5 rounded-xl transition-all active:scale-95"
-                        >
-                            <img src="https://authjs.dev/img/providers/google.svg" alt="Google" className="w-5 h-5" />
-                            Open Gmail
-                        </a>
+                        {/* 🚨 NEW: OTP Verification Form */}
+                        <form onSubmit={handleVerifyOtp} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 text-left">6-Digit Code</label>
+                                <input
+                                    type="text"
+                                    required
+                                    maxLength={6}
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))} // Only allows numbers
+                                    className="w-full text-center tracking-[0.5em] font-mono text-2xl bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500 transition-colors"
+                                    placeholder="••••••"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isLoading || otp.length < 6}
+                                className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white font-black py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                            >
+                                {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Verify Code"}
+                            </button>
+                        </form>
 
                         <div className="pt-4 border-t border-slate-800">
                             {canResend ? (

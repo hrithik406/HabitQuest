@@ -9,7 +9,6 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-  
   // Multi-step flow state
   const [step, setStep] = useState<1 | 2>(1);
   
@@ -98,6 +97,11 @@ export default function ForgotPasswordPage() {
     )
   );
 
+  // Validation logic for dynamic button disabling
+  const isStep1Valid = email.length > 0;
+  const isStep2Valid = otp.length === 6 && newPassword.length >= 6 && confirmPassword.length >= 6;
+  const isButtonDisabled = status === "loading" || (step === 1 ? !isStep1Valid : !isStep2Valid);
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
       {/* Background glow */}
@@ -181,6 +185,7 @@ export default function ForgotPasswordPage() {
                       <input
                         type={showNewPassword ? "text" : "password"}
                         required
+                        minLength={6}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500 transition-colors pr-12"
@@ -204,6 +209,7 @@ export default function ForgotPasswordPage() {
                       <input
                         type={showConfirmPassword ? "text" : "password"}
                         required
+                        minLength={6}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-violet-500 transition-colors pr-12"
@@ -225,8 +231,8 @@ export default function ForgotPasswordPage() {
 
             <button
               type="submit"
-              disabled={status === "loading"}
-              className="w-full bg-violet-600 hover:bg-violet-500 text-white font-black py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 mt-6"
+              disabled={isButtonDisabled}
+              className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:hover:bg-violet-600 text-white font-black py-3.5 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2 mt-6"
             >
               {status === "loading" ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -245,6 +251,7 @@ export default function ForgotPasswordPage() {
                     setStep(1);
                     setStatus("idle");
                     setMessage("");
+                    setOtp("");
                   } else {
                     router.push("/login");
                   }

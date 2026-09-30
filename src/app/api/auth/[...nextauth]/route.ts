@@ -30,16 +30,22 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
         action: { type: "text" }, 
         token: { type: "text" },
-        email: { type: "text" }
+        email: { type: "text" },
+        otp: { type: "text" } // 🚨 ADDED: Tell NextAuth to expect the 6-digit OTP
       },
       async authorize(credentials) {
         try {
-          // ── IF THEY CLICKED THE EMAIL LINK ──
+          // ── IF THEY CLICKED THE EMAIL LINK OR TYPED THE OTP ──
           if (credentials?.action === "verify") {
             const res = await fetch(`${API_URL}/api/auth/verify-email`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: credentials.email, token: credentials.token }),
+              // 🚨 ADDED: Send the OTP to Express along with the email and token
+              body: JSON.stringify({ 
+                email: credentials.email, 
+                token: credentials.token,
+                otp: credentials.otp 
+              }),
             });
             const data = await res.json();
             if (res.ok && data.user) {
@@ -47,6 +53,7 @@ const handler = NextAuth({
             }
             return null;
           }
+          
           // Using localhost as requested
           const res = await fetch(`${API_URL}/api/auth/login`, {
             method: "POST",

@@ -61,6 +61,8 @@ export interface IUser extends Document {
   isVerified: Boolean ;
   verificationToken: String | null ;
   verificationExpire: Date | null ;
+  verificationOtp:  String | null ;
+  verificationOtpExpire: Date | null ;
 }
 
 // ── Model interface (for statics if needed later) ─────────────────
@@ -134,6 +136,9 @@ const userSchema = new Schema<IUser>(
     isVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
     verificationExpire: { type: Date },
+
+    verificationOtp: { type: String },
+    verificationOtpExpire: { type: Date },
   },
   { timestamps: true }
 );
