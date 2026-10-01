@@ -10,14 +10,14 @@ const router = Router();
 // Your secret key for signing tokens (In production, put this in a .env file!)
 const JWT_SECRET = process.env.JWT_SECRET || "super_secret_habit_key_123";
 
-// ── GMAIL TRANSPORTER ──
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+// // ── GMAIL TRANSPORTER ──
+// const transporter = nodemailer.createTransport({
+//     service: "gmail",
+//     auth: {
+//         user: process.env.EMAIL_USER,
+//         pass: process.env.EMAIL_PASS,
+//     },
+// });
 
 // ─────────────────────────────────────────────────────────────────
 // POST /api/auth/register
@@ -55,7 +55,7 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         // 1. Generate Magic Link Token
         const verifyToken = crypto.randomBytes(32).toString("hex");
         const hashedToken = crypto.createHash("sha256").update(verifyToken).digest("hex");
-        
+
         // 2. 🚨 Generate 6-digit OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const expireDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -74,23 +74,28 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        await transporter.sendMail({
-            from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Your HabitQuest Verification Code",
-            text: `Welcome to HabitQuest, ${username}! Your verification code is ${otp}. Or verify by pasting this link in your browser: ${verifyUrl}`,
-            html: `
-                <div style="text-align: center; font-family: sans-serif; padding: 20px;">
-                    <h2>Welcome to HabitQuest, ${username}!</h2>
-                    <p>Enter the code below in the app to verify your account:</p>
-                    <h1 style="letter-spacing: 4px; color: #7c3aed; font-size: 36px; margin: 20px 0;">${otp}</h1>
-                    <p style="color: #64748b; margin-bottom: 20px;">Or click the button below to verify instantly:</p>
-                    <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                        Verify & Play
-                    </a>
-                </div>
-            `
-        }).catch(err => console.error("Background Email Error:", err));
+        const emailTargetUrl = `${frontendUrl}/api/send-email`;
+        console.log(`🔵 EXPRESS: Asking Next.js to send email via: ${emailTargetUrl}`);
+
+        fetch(emailTargetUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                to: email,
+                subject: "Your HabitQuest Verification Code",
+                text: `Welcome to HabitQuest, ${username}! Your verification code is ${otp}.`,
+                html: `<h1>${otp}</h1>
+                <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                    Verify & Play
+                </a>` // Simplified for debugging
+            })
+        })
+            .then(async (response) => {
+                const text = await response.text();
+                console.log(`🔵 EXPRESS: Next.js replied with Status ${response.status}`);
+                console.log(`🔵 EXPRESS: Next.js reply body: ${text}`);
+            })
+            .catch(err => console.error("🔴 EXPRESS: Network Fetch Error:", err));
 
         res.status(201).json({ message: "Verification link and OTP sent to email", requiresVerification: true });
     } catch (error: any) {
@@ -98,6 +103,8 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         res.status(500).json({ error: "Server error during registration" });
     }
 });
+
+
 
 // ─────────────────────────────────────────────────────────────────
 // POST /api/auth/verify-email
@@ -158,7 +165,7 @@ router.post("/verify-email", async (req: Request, res: Response): Promise<void> 
 // ─────────────────────────────────────────────────────────────────
 router.post("/resend-verification", async (req: Request, res: Response): Promise<void> => {
     try {
-        const { username , email } = req.body;
+        const { username, email } = req.body;
         const user = await User.findOne({ email });
 
         if (!user || user.isVerified) {
@@ -168,11 +175,11 @@ router.post("/resend-verification", async (req: Request, res: Response): Promise
 
         const verifyToken = crypto.randomBytes(32).toString("hex");
         const hashedToken = crypto.createHash("sha256").update(verifyToken).digest("hex");
-        
+
         // 🚨 Generate new OTP
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const expireDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
-        
+
         user.verificationToken = hashedToken;
         user.verificationExpire = expireDate;
         user.verificationOtp = otp;
@@ -182,23 +189,26 @@ router.post("/resend-verification", async (req: Request, res: Response): Promise
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
-        await transporter.sendMail({
-            from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: "Your New HabitQuest Verification Code",
-            text: `Welcome to HabitQuest, ${username}! Your new verification code is ${otp}. Or verify by pasting this link: ${verifyUrl}`,
-            html: `
-                <div style="text-align: center; font-family: sans-serif; padding: 20px;">
-                    <h2>Welcome back to HabitQuest, ${username}!</h2>
-                    <p>Enter the code below in the app to verify your account:</p>
-                    <h1 style="letter-spacing: 4px; color: #7c3aed; font-size: 36px; margin: 20px 0;">${otp}</h1>
-                    <p style="color: #64748b; margin-bottom: 20px;">Or click the button below:</p>
-                    <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-                        Verify & Play
-                    </a>
-                </div>
-            `
-        }).catch(err => console.error("Background Email Error:", err));
+        // Instead of transporter.sendMail, we ask Vercel to do it!
+        await fetch(`${frontendUrl}/api/send-email`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                to: email,
+                subject: "Your HabitQuest Verification Code",
+                text: `Welcome to HabitQuest, ${username}! Your verification code is ${otp}. Or verify by pasting this link: ${verifyUrl}`,
+                html: `
+            <div style="text-align: center; font-family: sans-serif; padding: 20px;">
+                <h2>Welcome to HabitQuest, ${username}!</h2>
+                <p>Enter the code below in the app to verify your account:</p>
+                <h1 style="letter-spacing: 4px; color: #7c3aed; font-size: 36px; margin: 20px 0;">${otp}</h1>
+                <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+                    Verify & Play
+                </a>
+            </div>
+        `
+            })
+        }).catch(err => console.error("Vercel API Fetch Error:", err));
 
         res.status(200).json({ message: "A new verification code has been sent." });
     } catch (error) {
@@ -306,38 +316,46 @@ router.post("/oauth", async (req: Request, res: Response): Promise<void> => {
 // POST /api/auth/forgot-password (OTP Flow via Gmail)
 // ─────────────────────────────────────────────────────────────────
 router.post("/forgot-password", async (req: Request, res: Response): Promise<void> => {
-try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
 
-    if (!user) {
-        // Always return success to prevent hackers from guessing emails
-        res.status(200).json({ message: "If that email exists, an OTP has been sent." });
-        return;
-    }
-
-    // 1. Generate a 6-digit numeric OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expireDate = new Date(Date.now() + 10 * 60 * 1000); // Valid for 10 minutes
-
-    // 2. Directly update only the token fields in the database
-    await User.updateOne(
-        { _id: user._id },
-        {
-            $set: {
-                resetPasswordToken: otp,
-                resetPasswordExpire: expireDate
-            }
+        if (!user) {
+            // Always return success to prevent hackers from guessing emails
+            res.status(200).json({ message: "If that email exists, an OTP has been sent." });
+            return;
         }
-    );
 
-    // 3. 🚨 Send via the global Gmail transporter (No Ethereal!)
-    await transporter.sendMail({
-        from: `"HabitQuest Support" <${process.env.EMAIL_USER}>`,
-        to: user.email,
-        subject: "Your HabitQuest Password Reset OTP",
-        text: `Your password reset OTP is: ${otp}. It is valid for 10 minutes.`,
-        html: `
+        // 1. Generate a 6-digit numeric OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expireDate = new Date(Date.now() + 10 * 60 * 1000); // Valid for 10 minutes
+
+        // 2. Directly update only the token fields in the database
+        await User.updateOne(
+            { _id: user._id },
+            {
+                $set: {
+                    resetPasswordToken: otp,
+                    resetPasswordExpire: expireDate
+                }
+            }
+        );
+
+        const verifyToken = crypto.randomBytes(32).toString("hex");
+
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+        const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
+
+        // 3. 🚨 Send via the global Gmail transporter (No Ethereal!)
+        await fetch(`${frontendUrl}/api/send-email`, {
+
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                to: email,
+                subject: "Your HabitQuest Password Reset OTP",
+                text: `Your password reset OTP is: ${otp}. It is valid for 10 minutes.`,
+                html: `
             <div style="text-align: center; font-family: sans-serif; padding: 20px;">
                 <h2>Password Reset Request</h2>
                 <p>Enter the code below in the app to reset your password:</p>
@@ -345,54 +363,54 @@ try {
                 <p>This code is valid for 10 minutes.</p>
                 <p style="color: #64748b; font-size: 12px; margin-top: 20px;">If you didn't request this, you can safely ignore this email.</p>
             </div>
-        `
-    }).catch(err => console.error("Background Reset Email Error:", err));
+        ` })
+        }).catch(err => console.error("Background Reset Email Error:", err));
 
-    res.status(200).json({ message: "If that email exists, an OTP has been sent." });
-} catch (error) {
-    console.error("Forgot Password Error:", error);
-    res.status(500).json({ error: "Server error during password reset request" });
-}
+        res.status(200).json({ message: "If that email exists, an OTP has been sent." });
+    } catch (error) {
+        console.error("Forgot Password Error:", error);
+        res.status(500).json({ error: "Server error during password reset request" });
+    }
 });
 
 // ─────────────────────────────────────────────────────────────────
 // POST /api/auth/reset-password (OTP Verification)
 // ─────────────────────────────────────────────────────────────────
 router.post("/reset-password", async (req: Request, res: Response): Promise<void> => {
-try {
-    const { email, otp, password } = req.body;
+    try {
+        const { email, otp, password } = req.body;
 
-    if (!email || !otp || !password) {
-        res.status(400).json({ error: "Please provide email, OTP, and new password" });
-        return;
+        if (!email || !otp || !password) {
+            res.status(400).json({ error: "Please provide email, OTP, and new password" });
+            return;
+        }
+
+        // 1. Find the user with this email AND a valid, unexpired OTP
+        const user = await User.findOne({
+            email: email,
+            resetPasswordToken: otp,
+            resetPasswordExpire: { $gt: new Date() },
+        });
+
+        if (!user) {
+            res.status(400).json({ error: "Invalid or expired OTP" });
+            return;
+        }
+
+        // 2. Hash the new password securely
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(password, salt);
+
+        // 3. Clear the OTP from the database so it can't be reused
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+        console.error("OTP RESET ERROR:", error);
+        res.status(500).json({ error: "Server error during password reset" });
     }
-
-    // 1. Find the user with this email AND a valid, unexpired OTP
-    const user = await User.findOne({
-        email: email,
-        resetPasswordToken: otp,
-        resetPasswordExpire: { $gt: new Date() },
-    });
-
-    if (!user) {
-        res.status(400).json({ error: "Invalid or expired OTP" });
-        return;
-    }
-
-    // 2. Hash the new password securely
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-
-    // 3. Clear the OTP from the database so it can't be reused
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    await user.save();
-
-    res.status(200).json({ message: "Password updated successfully" });
-} catch (error) {
-    console.error("OTP RESET ERROR:", error);
-    res.status(500).json({ error: "Server error during password reset" });
-}
 });
 
 export default router;
