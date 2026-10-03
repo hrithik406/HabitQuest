@@ -75,7 +75,6 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         const verifyUrl = `${frontendUrl}/verify?token=${verifyToken}&email=${email}`;
 
         const emailTargetUrl = `${frontendUrl}/api/send-email`;
-        console.log(`🔵 EXPRESS: Asking Next.js to send email via: ${emailTargetUrl}`);
 
         fetch(emailTargetUrl, {
             method: "POST",
@@ -92,10 +91,8 @@ router.post("/register", async (req: Request, res: Response): Promise<void> => {
         })
             .then(async (response) => {
                 const text = await response.text();
-                console.log(`🔵 EXPRESS: Next.js replied with Status ${response.status}`);
-                console.log(`🔵 EXPRESS: Next.js reply body: ${text}`);
             })
-            .catch(err => console.error("🔴 EXPRESS: Network Fetch Error:", err));
+            .catch(err => console.error("Network Fetch Error:", err));
 
         res.status(201).json({ message: "Verification link and OTP sent to email", requiresVerification: true });
     } catch (error: any) {

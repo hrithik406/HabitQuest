@@ -189,8 +189,9 @@ export default function AddHabitModal({ isOpen, onClose }: AddHabitModalProps): 
             exit={{ opacity: 0, y: 32, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 340, damping: 28 }}
             style={{ willChange: "transform, opacity" }}
-            className="fixed m-4 mr-4 z-50 w-full sm:max-w-lg bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl
-                       shadow-2xl max-h-[85dvh] flex flex-col justify-center "
+            className="fixed m-3 bottom-0 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
+                       z-100 w-fit sm:max-w-lg bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl
+                       shadow-2xl max-h-[86dvh] flex flex-col"
           >
             <div className="flex items-center justify-between px-5 py-2 border-b border-slate-800 shrink-0">
               <div className="flex items-center gap-2">

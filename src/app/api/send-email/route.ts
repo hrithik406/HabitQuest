@@ -10,11 +10,8 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function POST(req: Request) {
-    console.log("🟢 NEXT.JS: Received email request!");
     try {
         const body = await req.json();
-        console.log("🟢 NEXT.JS: Email target:", body.to);
-        console.log("🟢 NEXT.JS: Credentials check - User:", process.env.EMAIL_USER ? "FOUND" : "MISSING");
 
         await transporter.sendMail({
             from: `"HabitQuest" <${process.env.EMAIL_USER}>`,
@@ -24,10 +21,9 @@ export async function POST(req: Request) {
             html: body.html
         });
 
-        console.log("🟢 NEXT.JS: Email sent successfully to Gmail!");
         return NextResponse.json({ success: true });
     } catch (error: any) {
-        console.error("🔴 NEXT.JS: Vercel Email Error:", error);
+        console.error("Vercel Email Error:", error);
         return NextResponse.json({ error: "Failed to send email", details: error.message }, { status: 500 });
     }
 }
