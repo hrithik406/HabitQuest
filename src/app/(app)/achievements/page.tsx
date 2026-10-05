@@ -54,12 +54,14 @@ export default function AchievementsPage() {
     return { current: 0, max: 1, show: false };
   };
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+
   // ── THE CLAIM FUNCTION ──
   const handleClaim = async (achievementId: string) => {
     setClaimingId(achievementId);
 
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${user._id}/achievements/claim`, {
+      const res = await fetch(`${API_BASE}/api/users/${user._id}/achievements/claim`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ achievementId }),
