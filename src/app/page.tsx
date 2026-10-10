@@ -78,7 +78,7 @@ const FaqAccordion = () => {
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
                   className="overflow-hidden"
                 >
                   <div className="px-6 pb-6 text-slate-400 leading-relaxed">
@@ -133,7 +133,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.1, type: "spring", bounce: 0.5 }}
-            className="absolute top-[12%] left-[4%] md:top-[10%] md:left-[20%]"
+            className="absolute top-[8%] left-[4%] md:top-[8%] md:left-[20%]"
           >
             <motion.div
               animate={{ y: [-15, 15, -15], rotate: [-10, 15, -10] }}
@@ -165,7 +165,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.3, type: "spring", bounce: 0.5 }}
-            className="absolute top-[22%] right-[3%] md:top-[15%] md:right-[15%]"
+            className="absolute top-[18%] right-[3%] md:top-[15%] md:right-[15%]"
           >
             <motion.div
               animate={{ y: [-10, 10, -10], scale: [1, 1.1, 1] }}
@@ -181,7 +181,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2, type: "spring", bounce: 0.5 }}
-            className="absolute bottom-[25%] left-[3%] md:bottom-[25%] md:left-[15%]"
+            className="absolute bottom-[10%] left-[3%] md:bottom-[25%] md:left-[15%]"
           >
             <motion.div
               animate={{ y: [-15, 15, -15], rotate: [-5, 10, -5] }}
@@ -197,7 +197,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.5, type: "spring", bounce: 0.5 }}
-            className="absolute top-[45%] right-[10%] md:top-[50%] md:right-[5%]"
+            className="absolute top-[40%] right-[10%] md:top-[50%] md:right-[5%]"
           >
             <motion.div
               animate={{ y: [-20, 20, -20], rotate: [5, -8, 5] }}
@@ -213,7 +213,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.6, type: "spring", bounce: 0.5 }}
-            className="absolute bottom-[40%] left-[2%] md:bottom-[45%] md:left-[5%]"
+            className="absolute bottom-[30%] left-[2%] md:bottom-[45%] md:left-[5%]"
           >
             <motion.div
               animate={{ y: [-15, 15, -15], scale: [1, 1.05, 1] }}
