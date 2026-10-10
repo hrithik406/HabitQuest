@@ -133,7 +133,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.1, type: "spring", bounce: 0.5 }}
-            className="absolute top-[8%] left-[4%] md:top-[8%] md:left-[20%]"
+            className="absolute top-[4%] left-[4%] md:top-[8%] md:left-[20%]"
           >
             <motion.div
               animate={{ y: [-15, 15, -15], rotate: [-10, 15, -10] }}
@@ -149,7 +149,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.4, type: "spring", bounce: 0.5 }}
-            className="absolute bottom-[15%] right-[4%] md:bottom-[20%] md:right-[20%]"
+            className="absolute bottom-[20%] right-[4%] md:bottom-[20%] md:right-[20%]"
           >
             <motion.div
               animate={{ y: [-20, 20, -20], rotate: [10, -15, 10] }}
@@ -181,7 +181,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2, type: "spring", bounce: 0.5 }}
-            className="absolute bottom-[10%] left-[3%] md:bottom-[25%] md:left-[15%]"
+            className="absolute bottom-[10%] left-[15%] md:bottom-[25%] md:left-[15%]"
           >
             <motion.div
               animate={{ y: [-15, 15, -15], rotate: [-5, 10, -5] }}
@@ -197,7 +197,7 @@ export default function LandingPage() {
             initial={{ opacity: 0, scale: 0 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.5, type: "spring", bounce: 0.5 }}
-            className="absolute top-[40%] right-[10%] md:top-[50%] md:right-[5%]"
+            className="absolute top-[42%] right-[10%] md:top-[50%] md:right-[5%]"
           >
             <motion.div
               animate={{ y: [-20, 20, -20], rotate: [5, -8, 5] }}
