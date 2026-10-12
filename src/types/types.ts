@@ -74,7 +74,7 @@ export interface Habit {
   customDays: boolean[];
   currentStreak: number;
   longestStreak: number;
-  lastCompletedDate: string;
+  lastCompletedDate?: string;
   baseXp: number;
   baseGold: number;
   completionLog: CompletionLogEntry[];
